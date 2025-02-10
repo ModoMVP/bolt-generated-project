@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - crm-network
+    environment:
+      - REACT_APP_API_URL=https://crm.modomvp.com.br/api
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    depends_on:
+      - postgres
+    environment:
+      - PORT=8090
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - NODE_ENV=production
+    networks:
+      - crm-network
+
+  postgres:
+    image: postgres:15-alpine
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=${DATABASE_NAME}
+    ports:
+      - "5432:5432"
+    networks:
+      - crm-network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/crm.conf:/etc/nginx/conf.d/crm.conf
+      - /etc/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - crm-network
+
+volumes:
+  postgres-data:
+
+networks:
+  crm-network:
+    driver: bridge
